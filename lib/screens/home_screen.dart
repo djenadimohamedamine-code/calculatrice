@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../services/camera_service.dart';
 import '../widgets/calculator_widget.dart';
+import 'notes_screen.dart';
+import 'clock_screen.dart';
+import 'browser_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -16,7 +19,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   CameraService? _cameraService;
   bool _isRecording = false;
   bool _cameraInitialized = false;
-  String? _lastVideoPath;
+  
+  int _currentIndex = 0;
+  
+  final List<Widget> _screens = [
+    const CalculatorWidget(),
+    const NotesScreen(),
+    const ClockScreen(),
+    const BrowserScreen(),
+  ];
 
   @override
   void initState() {
@@ -26,12 +37,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _initCamera() async {
-    if (widget.cameras.isEmpty) {
-      debugPrint('Aucune camera disponible');
-      return;
-    }
+    if (widget.cameras.isEmpty) return;
 
-    // Utiliser la camera arriere
     CameraDescription? backCamera;
     for (final camera in widget.cameras) {
       if (camera.lensDirection == CameraLensDirection.back) {
@@ -70,12 +77,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final path = await _cameraService!.stopRecording();
       setState(() {
         _isRecording = false;
-        _lastVideoPath = path;
       });
       if (mounted && path != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Video sauvegardee !'),
+            content: Text('Vidéo sauvegardée !'),
             backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -112,18 +118,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         child: Column(
           children: [
-            // === Barre de controle video ===
+            // === Barre de contrôle vidéo ===
             _buildVideoControlBar(),
 
-            // === Apercu camera (miniature) ===
+            // === Aperçu caméra (miniature) ===
             if (_cameraInitialized) _buildCameraPreview(),
 
-            // === Calculatrice ===
-            const Expanded(
-              child: CalculatorWidget(),
+            // === Contenu principal dynamique ===
+            Expanded(
+              // IndexedStack permet de garder les écrans en mémoire quand on change d'onglet
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1C1C1E),
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calculate),
+            label: 'Calculatrice',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notes),
+            label: 'Notes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.access_time),
+            label: 'Horloge',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.public),
+            label: 'Web',
+          ),
+        ],
       ),
     );
   }
@@ -139,7 +179,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       child: Row(
         children: [
-          // Indicateur d'enregistrement
           if (_isRecording)
             Container(
               width: 12,
@@ -151,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           Text(
-            _isRecording ? 'REC' : 'Camera prete',
+            _isRecording ? 'REC' : 'Prêt',
             style: TextStyle(
               color: _isRecording ? Colors.red : Colors.grey,
               fontWeight: FontWeight.w600,
@@ -159,14 +198,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           const Spacer(),
-          // Bouton Start/Stop
           ElevatedButton.icon(
             onPressed: _cameraInitialized ? _toggleRecording : null,
             icon: Icon(
               _isRecording ? Icons.stop : Icons.videocam,
               size: 20,
             ),
-            label: Text(_isRecording ? 'Arreter' : 'Filmer'),
+            label: Text(_isRecording ? 'Arrêter' : 'Filmer'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _isRecording ? Colors.red.shade700 : Colors.orange,
               foregroundColor: Colors.white,
@@ -197,8 +235,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: _cameraService != null
             ? CameraPreview(_cameraService!.controller!)
             : const Center(
-                child: Text('Camera non disponible',
-                    style: TextStyle(color: Colors.grey)),
+                child: Text('Caméra non disponible', style: TextStyle(color: Colors.grey)),
               ),
       ),
     );
