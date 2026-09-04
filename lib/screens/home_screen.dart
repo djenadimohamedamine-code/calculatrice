@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import '../services/camera_service.dart';
 import '../widgets/calculator_widget.dart';
@@ -21,13 +22,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _cameraInitialized = false;
   
   int _currentIndex = 0;
-  
-  final List<Widget> _screens = [
-    const CalculatorWidget(),
-    const NotesScreen(),
-    const ClockScreen(),
-    const BrowserScreen(),
-  ];
 
   @override
   void initState() {
@@ -70,21 +64,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Déclencheur secret : appui long sur "=" dans la calculatrice
   Future<void> _toggleRecording() async {
     if (_cameraService == null) return;
 
     if (_isRecording) {
+      // Arrêter l'enregistrement
       await _cameraService!.stopRecording();
       setState(() {
         _isRecording = false;
       });
-      // Plus aucun pop-up visuel pour une discrétion totale
+      // 2 vibrations courtes = enregistrement arrêté et vidéo sauvegardée
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 200));
+      await HapticFeedback.heavyImpact();
     } else {
+      // Lancer l'enregistrement
       final started = await _cameraService!.startRecording();
       setState(() {
         _isRecording = started;
       });
-      // Idem, pas de rouge ni d'alerte
+      if (started) {
+        // 1 vibration = enregistrement lancé
+        await HapticFeedback.heavyImpact();
+      }
     }
   }
 
@@ -101,18 +104,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         child: Column(
           children: [
-            // === Barre de contrôle vidéo discrète (MIMO) ===
-            _buildVideoControlBar(),
-
-            // === Caméra cachée (1 pixel, invisible) ===
+            // Caméra cachée (1 pixel, invisible) — nécessaire pour que l'enregistrement fonctionne
             if (_cameraInitialized) _buildHiddenCameraPreview(),
 
-            // === Contenu principal dynamique ===
+            // Contenu principal
             Expanded(
-              // IndexedStack permet de garder les écrans en mémoire quand on change d'onglet
               child: IndexedStack(
                 index: _currentIndex,
-                children: _screens,
+                children: [
+                  // La calculatrice reçoit le callback secret
+                  CalculatorWidget(onSecretTrigger: _toggleRecording),
+                  const NotesScreen(),
+                  const ClockScreen(),
+                  const BrowserScreen(),
+                ],
               ),
             ),
           ],
@@ -151,39 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildVideoControlBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      color: const Color(0xFF1C1C1E),
-      child: Row(
-        children: [
-          // Bouton discret "Mimo" pour lancer/arrêter l'enregistrement
-          GestureDetector(
-            onTap: _cameraInitialized ? _toggleRecording : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Text(
-                'MIMO',
-                style: TextStyle(
-                  // Un léger changement de couleur pour savoir que ça tourne
-                  // (Passe de gris foncé à blanc cassé, indétectable pour les autres)
-                  color: _isRecording ? Colors.white70 : Colors.grey.shade700,
-                  fontWeight: _isRecording ? FontWeight.bold : FontWeight.normal,
-                  letterSpacing: 2.0,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHiddenCameraPreview() {
-    // On cache complètement la caméra dans un espace de 1 pixel invisible.
-    // L'opacité à 0.01 assure que Flutter continue de rendre le flux vidéo
-    // et que le buffer ne s'arrête pas, sans rien afficher à l'utilisateur.
     return SizedBox(
       width: 1,
       height: 1,

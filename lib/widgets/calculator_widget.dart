@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CalculatorWidget extends StatefulWidget {
-  const CalculatorWidget({super.key});
+  /// Callback appelé quand l'utilisateur fait un appui long sur "="
+  final VoidCallback? onSecretTrigger;
+
+  const CalculatorWidget({super.key, this.onSecretTrigger});
 
   @override
   State<CalculatorWidget> createState() => _CalculatorWidgetState();
@@ -153,10 +157,7 @@ class _CalculatorWidgetState extends State<CalculatorWidget> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // === Affichage ===
         _buildDisplay(),
-
-        // === Grille de boutons ===
         Expanded(
           child: _buildButtonGrid(),
         ),
@@ -233,7 +234,8 @@ class _CalculatorWidgetState extends State<CalculatorWidget> {
             _CalcButton('Del', _onBackspacePressed),
             _CalcButton('0', () => _onNumberPressed('0')),
             _CalcButton('.', _onDecimalPressed),
-            _CalcButton('=', _onEqualsPressed, type: _ButtonType.equals),
+            // Le bouton "=" a un appui long secret pour déclencher la caméra
+            _CalcButton('=', _onEqualsPressed, type: _ButtonType.equals, isSecret: true),
           ]),
         ],
       ),
@@ -289,6 +291,8 @@ class _CalculatorWidgetState extends State<CalculatorWidget> {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: button.onPressed,
+        // Appui long secret sur le bouton "="
+        onLongPress: button.isSecret ? widget.onSecretTrigger : null,
         borderRadius: BorderRadius.circular(16),
         splashColor: Colors.white24,
         child: Center(
@@ -312,6 +316,7 @@ class _CalcButton {
   final String label;
   final VoidCallback onPressed;
   final _ButtonType type;
+  final bool isSecret;
 
-  _CalcButton(this.label, this.onPressed, {this.type = _ButtonType.number});
+  _CalcButton(this.label, this.onPressed, {this.type = _ButtonType.number, this.isSecret = false});
 }
