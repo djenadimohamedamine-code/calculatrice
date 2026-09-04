@@ -1,0 +1,65 @@
+name: Build Calculatrice iOS
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build_ios:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.19.0"
+          channel: "stable"
+
+      - name: Backup Custom Files
+        run: |
+          cp pubspec.yaml pubspec.yaml.bak
+          cp -r lib lib.bak
+          cp -r ios/Runner/Info.plist ios_Info.plist.bak
+          cp -r ios/Runner/AppDelegate.swift ios_AppDelegate.swift.bak
+          
+      - name: Create Project Files
+        run: flutter create --project-name=calculatrice --platforms=ios .
+
+      - name: Restore Custom Files
+        run: |
+          cp pubspec.yaml.bak pubspec.yaml
+          cp -r lib.bak/. lib/
+          cp ios_Info.plist.bak ios/Runner/Info.plist
+          cp ios_AppDelegate.swift.bak ios/Runner/AppDelegate.swift
+
+      - name: Get Dependencies
+        run: |
+          flutter config --enable-ios
+          flutter clean
+          flutter pub get
+
+      - name: Pods
+        run: |
+          cd ios
+          for i in 1 2 3; do
+            echo "Tentative $i pour pod install..."
+            pod install --repo-update && break || sleep 15
+          done
+
+      - name: Build iOS
+        run: |
+          flutter build ios --release --no-codesign --verbose \
+            --dart-define=FLUTTER_XCODE_SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
+          
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r calculatrice.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculatrice-ipa
+          path: build/ios/iphoneos/calculatrice.ipa
