@@ -74,34 +74,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_cameraService == null) return;
 
     if (_isRecording) {
-      final path = await _cameraService!.stopRecording();
+      await _cameraService!.stopRecording();
       setState(() {
         _isRecording = false;
       });
-      if (mounted && path != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Vidéo sauvegardée !'),
-            backgroundColor: Colors.green.shade700,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      // Plus aucun pop-up visuel pour une discrétion totale
     } else {
       final started = await _cameraService!.startRecording();
       setState(() {
         _isRecording = started;
       });
-      if (mounted && started) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Enregistrement en cours...'),
-            backgroundColor: Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
+      // Idem, pas de rouge ni d'alerte
     }
   }
 
@@ -118,11 +101,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         child: Column(
           children: [
-            // === Barre de contrôle vidéo ===
+            // === Barre de contrôle vidéo discrète (MIMO) ===
             _buildVideoControlBar(),
 
-            // === Aperçu caméra (miniature) ===
-            if (_cameraInitialized) _buildCameraPreview(),
+            // === Caméra cachée (1 pixel, invisible) ===
+            if (_cameraInitialized) _buildHiddenCameraPreview(),
 
             // === Contenu principal dynamique ===
             Expanded(
@@ -170,47 +153,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildVideoControlBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2E),
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade800, width: 0.5),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: const Color(0xFF1C1C1E),
       child: Row(
         children: [
-          if (_isRecording)
-            Container(
-              width: 12,
-              height: 12,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-            ),
-          Text(
-            _isRecording ? 'REC' : 'Prêt',
-            style: TextStyle(
-              color: _isRecording ? Colors.red : Colors.grey,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          const Spacer(),
-          ElevatedButton.icon(
-            onPressed: _cameraInitialized ? _toggleRecording : null,
-            icon: Icon(
-              _isRecording ? Icons.stop : Icons.videocam,
-              size: 20,
-            ),
-            label: Text(_isRecording ? 'Arrêter' : 'Filmer'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isRecording ? Colors.red.shade700 : Colors.orange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+          // Bouton discret "Mimo" pour lancer/arrêter l'enregistrement
+          GestureDetector(
+            onTap: _cameraInitialized ? _toggleRecording : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Text(
+                'MIMO',
+                style: TextStyle(
+                  // Un léger changement de couleur pour savoir que ça tourne
+                  // (Passe de gris foncé à blanc cassé, indétectable pour les autres)
+                  color: _isRecording ? Colors.white70 : Colors.grey.shade700,
+                  fontWeight: _isRecording ? FontWeight.bold : FontWeight.normal,
+                  letterSpacing: 2.0,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
@@ -219,24 +180,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildCameraPreview() {
-    return Container(
-      height: 80,
-      margin: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _isRecording ? Colors.red : Colors.grey.shade700,
-          width: _isRecording ? 2 : 1,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(11),
+  Widget _buildHiddenCameraPreview() {
+    // On cache complètement la caméra dans un espace de 1 pixel invisible.
+    // L'opacité à 0.01 assure que Flutter continue de rendre le flux vidéo
+    // et que le buffer ne s'arrête pas, sans rien afficher à l'utilisateur.
+    return SizedBox(
+      width: 1,
+      height: 1,
+      child: Opacity(
+        opacity: 0.01,
         child: _cameraService != null
             ? CameraPreview(_cameraService!.controller!)
-            : const Center(
-                child: Text('Caméra non disponible', style: TextStyle(color: Colors.grey)),
-              ),
+            : const SizedBox(),
       ),
     );
   }
