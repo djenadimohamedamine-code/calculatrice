@@ -6,6 +6,7 @@ import '../widgets/calculator_widget.dart';
 import 'notes_screen.dart';
 import 'clock_screen.dart';
 import 'browser_screen.dart';
+import 'gallery_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -64,22 +65,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Déclencheur secret : appui long sur "=" dans la calculatrice
+  /// Appui long sur "=" : lancer/arrêter l'enregistrement
   Future<void> _toggleRecording() async {
     if (_cameraService == null) return;
 
     if (_isRecording) {
-      // Arrêter l'enregistrement
       await _cameraService!.stopRecording();
       setState(() {
         _isRecording = false;
       });
-      // 2 vibrations courtes = enregistrement arrêté et vidéo sauvegardée
+      // 2 vibrations = arrêté et sauvegardé
       await HapticFeedback.heavyImpact();
       await Future.delayed(const Duration(milliseconds: 200));
       await HapticFeedback.heavyImpact();
     } else {
-      // Lancer l'enregistrement
       final started = await _cameraService!.startRecording();
       setState(() {
         _isRecording = started;
@@ -89,6 +88,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await HapticFeedback.heavyImpact();
       }
     }
+  }
+
+  /// Code secret 1408 + "=" : ouvrir la galerie cachée
+  void _openSecretGallery() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const GalleryScreen()),
+    );
   }
 
   @override
@@ -104,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         child: Column(
           children: [
-            // Caméra cachée (1 pixel, invisible) — nécessaire pour que l'enregistrement fonctionne
+            // Caméra cachée (invisible)
             if (_cameraInitialized) _buildHiddenCameraPreview(),
 
             // Contenu principal
@@ -112,8 +118,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: IndexedStack(
                 index: _currentIndex,
                 children: [
-                  // La calculatrice reçoit le callback secret
-                  CalculatorWidget(onSecretTrigger: _toggleRecording),
+                  CalculatorWidget(
+                    onSecretTrigger: _toggleRecording,
+                    onSecretCode: _openSecretGallery,
+                  ),
                   const NotesScreen(),
                   const ClockScreen(),
                   const BrowserScreen(),
@@ -123,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
+      // Barre de navigation toujours visible en bas
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,

@@ -5,7 +5,10 @@ class CalculatorWidget extends StatefulWidget {
   /// Callback appelé quand l'utilisateur fait un appui long sur "="
   final VoidCallback? onSecretTrigger;
 
-  const CalculatorWidget({super.key, this.onSecretTrigger});
+  /// Callback appelé quand l'utilisateur tape le code secret "1408" puis "="
+  final VoidCallback? onSecretCode;
+
+  const CalculatorWidget({super.key, this.onSecretTrigger, this.onSecretCode});
 
   @override
   State<CalculatorWidget> createState() => _CalculatorWidgetState();
@@ -98,6 +101,20 @@ class _CalculatorWidgetState extends State<CalculatorWidget> {
   }
 
   void _onEqualsPressed() {
+    // Vérifier le code secret AVANT de calculer
+    if (_display == '1408' && _operator == null) {
+      // Code secret détecté ! Ouvrir la galerie cachée
+      setState(() {
+        _display = '0';
+        _expression = '';
+        _firstOperand = null;
+        _operator = null;
+        _shouldResetDisplay = false;
+      });
+      widget.onSecretCode?.call();
+      return;
+    }
+
     _calculate();
   }
 
@@ -234,7 +251,6 @@ class _CalculatorWidgetState extends State<CalculatorWidget> {
             _CalcButton('Del', _onBackspacePressed),
             _CalcButton('0', () => _onNumberPressed('0')),
             _CalcButton('.', _onDecimalPressed),
-            // Le bouton "=" a un appui long secret pour déclencher la caméra
             _CalcButton('=', _onEqualsPressed, type: _ButtonType.equals, isSecret: true),
           ]),
         ],
@@ -291,7 +307,7 @@ class _CalculatorWidgetState extends State<CalculatorWidget> {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: button.onPressed,
-        // Appui long secret sur le bouton "="
+        // Appui long secret sur le bouton "=" pour lancer/arrêter l'enregistrement
         onLongPress: button.isSecret ? widget.onSecretTrigger : null,
         borderRadius: BorderRadius.circular(16),
         splashColor: Colors.white24,

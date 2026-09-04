@@ -36,9 +36,9 @@ class _ClockScreenState extends State<ClockScreen> {
   Widget build(BuildContext context) {
     final timeString = '${_formatTime(_now.hour)}:${_formatTime(_now.minute)}:${_formatTime(_now.second)}';
     
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
+    return Container(
+      color: Colors.black,
+      child: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: FittedBox(

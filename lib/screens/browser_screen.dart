@@ -22,8 +22,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: WebViewWidget(controller: _controller),
-    );
+    return WebViewWidget(controller: _controller);
   }
 }
