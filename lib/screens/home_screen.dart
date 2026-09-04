@@ -70,23 +70,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_cameraService == null) return;
 
     if (_isRecording) {
+      // 1. Arrêter l'enregistrement (libère le micro)
       await _cameraService!.stopRecording();
       setState(() {
         _isRecording = false;
       });
-      // 2 vibrations = arrêté et sauvegardé
-      await HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 200));
-      await HapticFeedback.heavyImpact();
+      
+      // 2. Attendre que le système iOS libère bien la session audio
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // 3. Faire les 2 vibrations fortes
+      await HapticFeedback.vibrate();
+      await Future.delayed(const Duration(milliseconds: 400));
+      await HapticFeedback.vibrate();
     } else {
+      // 1. Faire la vibration AVANT de lancer la caméra (sinon iOS la bloque)
+      await HapticFeedback.vibrate();
+      await Future.delayed(const Duration(milliseconds: 100)); // Laisse le temps de vibrer
+      
+      // 2. Lancer l'enregistrement
       final started = await _cameraService!.startRecording();
       setState(() {
         _isRecording = started;
       });
-      if (started) {
-        // 1 vibration = enregistrement lancé
-        await HapticFeedback.heavyImpact();
-      }
     }
   }
 
