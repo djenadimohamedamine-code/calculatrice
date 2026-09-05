@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'video_player_screen.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -123,6 +124,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: ListTile(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VideoPlayerScreen(videoPath: file.path),
+                            ),
+                          );
+                        },
                         leading: Container(
                           width: 48,
                           height: 48,
