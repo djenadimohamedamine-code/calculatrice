@@ -27,14 +27,15 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Create Native Folders on Cloud
+      - name: Create Native Android Folder on Cloud
         run: |
-          flutter create --org com.mimo --project-name=calculatrice --platforms=android --no-overwrite .
+          rm -rf android
+          flutter create --org com.mimo --project-name=calculatrice --platforms=android .
           if ! git ls-files --error-unmatch test/widget_test.dart >/dev/null 2>&1; then
             rm -f test/widget_test.dart
           fi
 
-      - name: Upgrade Kotlin Version
+      - name: Upgrade Kotlin Version & Gradle Configuration
         run: |
           sed -i '1i buildscript { ext.kotlin_version = "1.9.22" }' android/build.gradle
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*" apply false/id "org.jetbrains.kotlin.android" version "1.9.22" apply false/' android/settings.gradle || true
