@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
+import 'package:share_plus/share_plus.dart';
+import '../services/camera_service.dart';
 import 'video_player_screen.dart';
 
 class GalleryScreen extends StatefulWidget {
@@ -23,27 +25,32 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   Future<void> _loadVideos() async {
     try {
-      final Directory appDir = await getApplicationDocumentsDirectory();
-      final String videoDir = path.join(appDir.path, 'calculatrice_videos');
-      final dir = Directory(videoDir);
+      final dirs = await CameraService.getVideoDirectories();
+      final Map<String, FileSystemEntity> videoMap = {};
 
-      if (await dir.exists()) {
-        final files = dir
-            .listSync()
-            .where((f) => f.path.endsWith('.mp4'))
-            .toList();
-        // Trier par date (plus récent en premier)
-        files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-        setState(() {
-          _videos = files;
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _videos = [];
-          _loading = false;
-        });
+      for (final dir in dirs) {
+        if (await dir.exists()) {
+          final files = dir
+              .listSync()
+              .where((f) => f.path.endsWith('.mp4'))
+              .toList();
+          for (final f in files) {
+            final fileName = path.basename(f.path);
+            if (!videoMap.containsKey(fileName)) {
+              videoMap[fileName] = f;
+            }
+          }
+        }
       }
+
+      final files = videoMap.values.toList();
+      // Trier par date (plus récent en premier)
+      files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+
+      setState(() {
+        _videos = files;
+        _loading = false;
+      });
     } catch (e) {
       setState(() {
         _loading = false;
@@ -52,9 +59,29 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Future<void> _deleteVideo(int index) async {
-    final file = File(_videos[index].path);
+    final fileName = path.basename(_videos[index].path);
     try {
-      await file.delete();
+      // 1. Supprimer le fichier référencé
+      final file = File(_videos[index].path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+
+      // 2. Supprimer aussi les copies dans d'autres répertoires s'ils existent
+      final dirs = await CameraService.getVideoDirectories();
+      for (final dir in dirs) {
+        final otherFile = File(path.join(dir.path, fileName));
+        if (await otherFile.exists()) {
+          try {
+            await otherFile.delete();
+            if (Platform.isAndroid) {
+              const platform = MethodChannel('com.mimo.calculatrice/media');
+              await platform.invokeMethod('scanFile', {'path': otherFile.path});
+            }
+          } catch (_) {}
+        }
+      }
+
       setState(() {
         _videos.removeAt(index);
       });
@@ -81,7 +108,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
       backgroundColor: const Color(0xFF1C1C1E),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2C2C2E),
-        title: const Text('Fichiers', style: TextStyle(color: Colors.white)),
+        title: const Text('Fichiers & Galerie', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.orange),
           onPressed: () => Navigator.of(context).pop(),
@@ -150,31 +177,49 @@ class _GalleryScreenState extends State<GalleryScreen> {
                           '${_formatDate(stat.modified)}  •  ${_formatSize(stat.size)}',
                           style: const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                backgroundColor: const Color(0xFF2C2C2E),
-                                title: const Text('Supprimer ?', style: TextStyle(color: Colors.white)),
-                                content: const Text('Cette vidéo sera supprimée définitivement.', style: TextStyle(color: Colors.grey)),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.share, color: Colors.orange),
+                              tooltip: 'Partager',
+                              onPressed: () {
+                                Share.shareXFiles(
+                                  [XFile(file.path)],
+                                  text: fileName,
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    backgroundColor: const Color(0xFF2C2C2E),
+                                    title: const Text('Supprimer ?', style: TextStyle(color: Colors.white)),
+                                    content: const Text(
+                                      'Cette vidéo sera supprimée définitivement (de l\'application et de la galerie).',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(ctx);
+                                          _deleteVideo(index);
+                                        },
+                                        child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(ctx);
-                                      _deleteVideo(index);
-                                    },
-                                    child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     );

@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -40,6 +42,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.orange),
+            tooltip: 'Partager',
+            onPressed: () {
+              Share.shareXFiles(
+                [XFile(widget.videoPath)],
+                text: path.basename(widget.videoPath),
+              );
+            },
+          ),
+        ],
       ),
       extendBodyBehindAppBar: true,
       body: Center(
