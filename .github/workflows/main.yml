@@ -50,6 +50,11 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
+      - name: Patch Plugin Build Scripts
+        run: |
+          find /home/runner/.pub-cache -name "build.gradle" -exec sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk 34/g' {} + || true
+          find /home/runner/.pub-cache -name "build.gradle" -exec sed -i 's/compileSdkVersion = flutter.compileSdkVersion/compileSdkVersion 34/g' {} + || true
+
       - name: Build APK (Android)
         run: flutter build apk --release
 
