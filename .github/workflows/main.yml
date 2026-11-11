@@ -24,7 +24,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          flutter-version: '3.22.0'
           channel: 'stable'
 
       - name: Create Native Folders on Cloud
@@ -47,7 +47,7 @@ jobs:
       - name: Flutter Pub Get
         run: flutter pub get
 
-      - name: Build APK (Release)
+      - name: Build APK (Android)
         run: flutter build apk --release
 
       - name: Upload APK
