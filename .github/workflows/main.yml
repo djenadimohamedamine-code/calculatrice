@@ -24,21 +24,28 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.24.3'
           channel: 'stable'
 
-      - name: Create Native Folders on Cloud
-        run: flutter create --project-name=calculatrice --platforms=android --no-overwrite .
-
-      - name: Upgrade Kotlin Version
+      - name: Backup Custom Manifest
         run: |
-          sed -i '1i buildscript { ext.kotlin_version = "1.9.22" }' android/build.gradle 2>/dev/null || true
-          sed -i 's/id "org.jetbrains.kotlin.android" version ".*" apply false/id "org.jetbrains.kotlin.android" version "1.9.22" apply false/' android/settings.gradle 2>/dev/null || true
+          cp android/app/src/main/AndroidManifest.xml AndroidManifest.xml.bak
 
-      - name: Ensure MinSdk
+      - name: Create Native Android Project
         run: |
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle 2>/dev/null || true
+          rm -rf android
+          flutter create --project-name=calculatrice --platforms=android .
+
+      - name: Restore Custom Manifest
+        run: |
+          cp AndroidManifest.xml.bak android/app/src/main/AndroidManifest.xml
+
+      - name: Configure compileSdk and minSdk
+        run: |
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/g' android/app/build.gradle.kts 2>/dev/null || true
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle.kts 2>/dev/null || true
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle 2>/dev/null || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle 2>/dev/null || true
 
       - name: Flutter Pub Get
         run: flutter pub get
