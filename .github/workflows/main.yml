@@ -43,22 +43,18 @@ jobs:
           sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/' android/app/build.gradle || true
           sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 35/' android/app/build.gradle || true
           sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 35/' android/app/build.gradle || true
-          cat << 'EOF' >> android/build.gradle
-
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                if (namespace == null) {
-                    namespace project.group
-                }
-                compileSdkVersion 35
-                buildToolsVersion "35.0.0"
-            }
-        }
-    }
-}
-EOF
+          echo "" >> android/build.gradle
+          echo "subprojects {" >> android/build.gradle
+          echo "    afterEvaluate { project ->" >> android/build.gradle
+          echo "        if (project.hasProperty('android')) {" >> android/build.gradle
+          echo "            project.android {" >> android/build.gradle
+          echo "                if (namespace == null) { namespace project.group }" >> android/build.gradle
+          echo "                compileSdkVersion 35" >> android/build.gradle
+          echo "                buildToolsVersion '35.0.0'" >> android/build.gradle
+          echo "            }" >> android/build.gradle
+          echo "        }" >> android/build.gradle
+          echo "    }" >> android/build.gradle
+          echo "}" >> android/build.gradle
 
       - name: Add Android Manifest
         run: |
